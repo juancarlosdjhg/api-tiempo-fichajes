@@ -31,6 +31,7 @@ def tiempoFichajes(data: FichajesRequest):
     return readParams(data.fichajes.sort())
 
 def readParams(fichajes: List[str]):
+    print(fichajes)
     if not fichajes:
         return {"No hay fichajes"}
     
