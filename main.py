@@ -28,7 +28,7 @@ def read_root():
 
 @app.get("/tiempoFichajes")
 def tiempoFichajes(data: FichajesRequest):
-    return readParams(data.fichajes)
+    return readParams(data.fichajes.sort())
 
 def readParams(fichajes: List[str]):
     if not fichajes:
