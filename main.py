@@ -4,17 +4,44 @@ uvicorn getRemainingWorkTime:app --reload
 """
 import time
 from datetime import datetime, timedelta, date
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from typing import List, Optional
 from pydantic import BaseModel
+import pytz
+import bcrypt
 
 app = FastAPI()
+security = HTTPBasic()
+
+users_db = {
+    "user1": {
+        "username": "user1",
+        "password_hash": b'$2b$12$79K6b9nRrlIuA5l9lsDrLOD53VR8HiDTQ9r8fC9eh0dKAMx7wIsCW'
+    }
+}
 
 def convert_timedelta(td):
     return td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
 
 def formatTo2Digits(value):
     return str(value).zfill(2)
+
+def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
+    user = users_db.get(credentials.username)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    if not bcrypt.checkpw(credentials.password.encode('utf-8'), user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 class FichajesRequest(BaseModel):
     fichajes: List[str]
@@ -24,19 +51,27 @@ def read_root():
     return {"Hola mundo!"}
 
 @app.get("/tiempoFichajes")
-def tiempoFichajes(data: FichajesRequest):
+def tiempoFichajes(data: FichajesRequest, username: str = Depends(verify_user)):
     return readParams(sorted(data.fichajes))
 
 def readParams(fichajes: List[str]):
     if not fichajes:
         return {"No hay fichajes"}
     
-    print("Hora local: ")
+    print("Hora servidor: ")
     print(datetime.now())
+
+    zona_horaria = pytz.timezone('Atlantic/Canary')
+    ahora_dt = datetime.now(zona_horaria)
     
-    ahora_dt = datetime.now()
+    print("Hora local: ")
+    print(ahora_dt)
+
     ahora = ahora_dt.strftime("%H:%M")
-    fichajes_times = [datetime.strptime(f, "%H:%M") if f else datetime.strptime(ahora, "%H:%M") for f in fichajes]
+    fichajes_times = [
+    zona_horaria.localize(datetime.combine(ahora_dt.date(), datetime.strptime(f, "%H:%M").time()))
+    if f else ahora_dt for f in fichajes
+]
     
     tiempo_trabajado = timedelta()
     tiempo_descansos = timedelta()
