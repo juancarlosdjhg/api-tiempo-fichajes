@@ -31,6 +31,9 @@ def readParams(fichajes: List[str]):
     if not fichajes:
         return {"No hay fichajes"}
     
+    print("Hora local: ")
+    print(datetime.now())
+    
     ahora_dt = datetime.now()
     ahora = ahora_dt.strftime("%H:%M")
     fichajes_times = [datetime.strptime(f, "%H:%M") if f else datetime.strptime(ahora, "%H:%M") for f in fichajes]
